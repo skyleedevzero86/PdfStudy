@@ -1,5 +1,9 @@
 # PaperLens (PdfStudy)
 
+<br/>
+![PaperLens - AI 문서 검색 및 분석](imgs/이미지.jpg)
+
+<br/>
 ## 1. 프로젝트 소개
 
 **PaperLens**는 PDF 문서를 업로드하고, AI 기반 검색·요약·질의응답을 제공하는 문서 관리 플랫폼입니다.
