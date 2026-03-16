@@ -1,5 +1,6 @@
 application.yml
-/paperlens/gradle/
+paperlens/gradle/
+
 HELP.md
 .gradle
 build/
