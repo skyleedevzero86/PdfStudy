@@ -1,2 +1,2 @@
 rootProject.name = "paperlens"
-include("paperlens-domain","paperlens-application")
+include("paperlens-domain","paperlens-application","paperlens-infrastructure")
