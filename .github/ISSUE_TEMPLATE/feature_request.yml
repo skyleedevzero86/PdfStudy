@@ -1,0 +1,39 @@
+name: "기능 제안"
+description: "새 기능 또는 개선 사항을 제안하는 템플릿입니다."
+title: "[기능] "
+labels:
+  - enhancement
+body:
+  - type: markdown
+    attributes:
+      value: |
+        새로운 기능 제안에 감사드립니다! 동기와 사용 시나리오를 중심으로 작성해 주세요.
+
+  - type: textarea
+    id: summary
+    attributes:
+      label: 요청 내용
+      description: 어떤 기능을 추가/개선하고 싶은지 간단히 설명해 주세요.
+      placeholder: 예) 문서 검색 결과를 태그별로 필터링할 수 있었으면 합니다.
+    validations:
+      required: true
+
+  - type: textarea
+    id: motivation
+    attributes:
+      label: 배경 / 이유
+      description: 이 기능이 필요한 이유, 해결하고 싶은 문제를 적어 주세요.
+    validations:
+      required: true
+
+  - type: textarea
+    id: proposal
+    attributes:
+      label: 제안하는 동작
+      description: UX 플로우나 API 설계 등 구체적으로 떠오르는 아이디어가 있다면 적어 주세요.
+      placeholder: |
+        - 예) /api/search 에 tag 파라미터 추가
+        - 예) UI 상단에 태그 필터 드롭다운 노출
+    validations:
+      required: false
+

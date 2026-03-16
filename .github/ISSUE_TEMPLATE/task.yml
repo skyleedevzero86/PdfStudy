@@ -1,0 +1,32 @@
+name: "작업"
+description: "리팩터링, 문서, 설정 등 일반 작업을 위한 템플릿입니다."
+title: "[작업] "
+labels:
+  - task
+body:
+  - type: markdown
+    attributes:
+      value: |
+        구현/리팩터링/문서화/설정 변경 등 일반적인 작업 항목을 기록해 주세요.
+
+  - type: textarea
+    id: summary
+    attributes:
+      label: 작업 내용
+      description: 무엇을 변경/추가/삭제하려는지 한 줄로 요약해 주세요.
+      placeholder: 예) 인프라 모듈 검색 전략 코드 리팩터링
+    validations:
+      required: true
+
+  - type: textarea
+    id: details
+    attributes:
+      label: 상세
+      description: 세부 작업 목록, 고려 사항, 영향을 받는 모듈 등을 적어 주세요.
+      placeholder: |
+        - [ ] SearchStrategy 인터페이스 분리
+        - [ ] FuzzySearchStrategy 쿼리 최적화
+        - [ ] 테스트 코드 보완
+    validations:
+      required: false
+
