@@ -1,11 +1,11 @@
-package com.sleekydz86.paperlens.domain
+package com.sleekydz86.paperlens.application
 
 import org.springframework.boot.autoconfigure.SpringBootApplication
 import org.springframework.boot.runApplication
 
 @SpringBootApplication
-class PaperlensDomainApplication
+class PaperlensApplication
 
 fun main(args: Array<String>) {
-    runApplication<PaperlensDomainApplication>(*args)
+	runApplication<PaperlensApplication>(*args)
 }
