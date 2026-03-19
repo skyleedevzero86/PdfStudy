@@ -1,16 +1,20 @@
 package com.sleekydz86.paperlens.application.usecase
 
 import com.sleekydz86.paperlens.application.dto.AdminStatsResponse
+import com.sleekydz86.paperlens.application.dto.DocumentJobResponse
 import com.sleekydz86.paperlens.application.dto.DocumentResponse
+import com.sleekydz86.paperlens.application.port.DocumentJobPort
 import com.sleekydz86.paperlens.application.port.DocumentProcessPort
 import com.sleekydz86.paperlens.application.port.QueryLogPort
 import com.sleekydz86.paperlens.domain.document.DocumentStatus
+import com.sleekydz86.paperlens.domain.job.DocumentJobType
 import com.sleekydz86.paperlens.domain.port.DocumentRepositoryPort
 
 class AdminUseCase(
     private val documentRepository: DocumentRepositoryPort,
     private val queryLogPort: QueryLogPort,
     private val processPort: DocumentProcessPort,
+    private val documentJobPort: DocumentJobPort,
 ) {
 
     fun getStats(): AdminStatsResponse {
@@ -32,8 +36,11 @@ class AdminUseCase(
 
     fun reprocess(documentId: Long) {
         val doc = documentRepository.findById(documentId)
-            ?: throw NoSuchElementException("문서를 찾을 수 없습니다: $documentId")
+            ?: throw NoSuchElementException("臾몄꽌瑜?李얠쓣 ???놁뒿?덈떎: $documentId")
         documentRepository.save(doc.withStatus(DocumentStatus.PENDING))
+        DEFAULT_JOB_TYPES.forEach { jobType ->
+            documentJobPort.enqueue(documentId, jobType)
+        }
         processPort.processAsync(documentId)
     }
 
@@ -53,4 +60,30 @@ class AdminUseCase(
                 createdAt = doc.createdAt,
             )
         }
+
+    fun getDocumentJobs(documentId: Long): List<DocumentJobResponse> =
+        documentJobPort.getByDocumentId(documentId).map(::toJobResponse)
+
+    fun getRecentDocumentJobs(limit: Int): List<DocumentJobResponse> =
+        documentJobPort.getRecent(limit.coerceIn(1, 200)).map(::toJobResponse)
+
+    private fun toJobResponse(job: com.sleekydz86.paperlens.domain.job.DocumentJob) =
+        DocumentJobResponse(
+            id = job.id,
+            documentId = job.documentId,
+            documentTitle = job.documentTitle,
+            jobType = job.jobType.name,
+            status = job.status.name,
+            startedAt = job.startedAt.toString(),
+            finishedAt = job.finishedAt?.toString(),
+            errorMessage = job.errorMessage,
+        )
+
+    private companion object {
+        val DEFAULT_JOB_TYPES = listOf(
+            DocumentJobType.PARSE,
+            DocumentJobType.SUMMARY,
+            DocumentJobType.EMBED,
+        )
+    }
 }

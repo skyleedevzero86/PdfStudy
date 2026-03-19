@@ -36,6 +36,7 @@ export interface SearchResult {
   title: string
   summaryShort: string | null
   documentType: string | null
+  tags: string[]
   score: number
   highlights: string[]
 }
