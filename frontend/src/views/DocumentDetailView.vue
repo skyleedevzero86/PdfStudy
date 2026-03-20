@@ -110,6 +110,12 @@
       </div>
     </div>
   </div>
+  <div v-else-if="errorMessage" class="flex h-64 items-center justify-center px-6 text-center">
+    <div>
+      <p class="text-sm font-medium text-red-600">{{ errorMessage }}</p>
+      <p class="mt-2 text-xs text-slate-400">Try refreshing the page after restarting the backend server.</p>
+    </div>
+  </div>
   <div v-else class="flex items-center justify-center h-64">
     <Loader2 class="w-8 h-8 animate-spin text-primary-500" />
   </div>
@@ -129,6 +135,7 @@ import StatusBadge from '@/components/common/StatusBadge.vue'
 const route = useRoute()
 const store = useDocumentStore()
 const document = ref<DocumentDetail | null>(store.currentDocument)
+const errorMessage = ref('')
 
 const activeTab = ref('summary')
 const tabs = [
@@ -160,6 +167,22 @@ function clearRefreshTimer() {
   refreshTimer = null
 }
 
+async function loadDocument(id: number) {
+  clearRefreshTimer()
+  errorMessage.value = ''
+
+  try {
+    document.value = await store.fetchDocument(id)
+    scheduleRefresh()
+  } catch (error: any) {
+    document.value = null
+    const serverMessage = error.response?.data?.message
+    errorMessage.value = typeof serverMessage === 'string'
+      ? serverMessage
+      : 'Failed to load this document.'
+  }
+}
+
 function scheduleRefresh() {
   clearRefreshTimer()
   if (!shouldRefreshDocument(document.value) || refreshAttempts >= 15) return
@@ -167,16 +190,14 @@ function scheduleRefresh() {
   refreshTimer = setTimeout(async () => {
     const id = Number(route.params.id)
     refreshAttempts += 1
-    document.value = await store.fetchDocument(id)
-    scheduleRefresh()
+    await loadDocument(id)
   }, 2000)
 }
 
 onMounted(async () => {
   const id = Number(route.params.id)
   refreshAttempts = 0
-  document.value = await store.fetchDocument(id)
-  scheduleRefresh()
+  await loadDocument(id)
 })
 
 watch(
@@ -185,8 +206,7 @@ watch(
     const id = Number(nextId)
     if (!id || Number.isNaN(id)) return
     refreshAttempts = 0
-    document.value = await store.fetchDocument(id)
-    scheduleRefresh()
+    await loadDocument(id)
   },
 )
 

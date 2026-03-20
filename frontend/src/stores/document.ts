@@ -47,9 +47,7 @@ export const useDocumentStore = defineStore('document', () => {
   }
 
   async function uploadDocument(formData: FormData) {
-    const res = await api.post<Document>('/documents/upload', formData, {
-      headers: { 'Content-Type': 'multipart/form-data' }
-    })
+    const res = await api.post<Document>('/documents/upload', formData)
     await fetchDocuments()
     return res.data
   }
