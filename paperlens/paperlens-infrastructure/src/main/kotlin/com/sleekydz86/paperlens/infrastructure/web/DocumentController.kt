@@ -31,9 +31,11 @@ class DocumentController(
 
     @PostMapping("/upload", consumes = [MediaType.MULTIPART_FORM_DATA_VALUE])
     fun upload(
-        @RequestPart file: MultipartFile,
-        @RequestPart title: String,
-        @RequestPart(required = false) description: String?,
+        @RequestParam file: MultipartFile,
+        @RequestParam title: String,
+        @RequestParam(required = false) description: String?,
+        @RequestParam(required = false) tags: List<String>?,
+        @RequestParam(name = "tag", required = false) tag: List<String>?,
         @AuthenticationPrincipal user: UserEntity,
     ): ResponseEntity<Any> {
         val response = documentUseCase.uploadDocument(
@@ -42,6 +44,7 @@ class DocumentController(
             title = title,
             description = description,
             userId = user.id,
+            tagNames = normalizeTagParams(tags, tag),
         )
         redisCacheService.evictDocumentCaches()
         return ResponseEntity.ok(response)
@@ -78,6 +81,7 @@ class DocumentController(
     fun get(@PathVariable id: Long): ResponseEntity<Any> {
         redisCacheService.getDocumentDetail(id)?.let { return ResponseEntity.ok(it) }
         val response = documentUseCase.getDocument(id)
+        redisCacheService.evictDocumentCaches()
         redisCacheService.putDocumentDetail(id, response)
         return ResponseEntity.ok(response)
     }

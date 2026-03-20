@@ -8,6 +8,8 @@ import com.sleekydz86.paperlens.infrastructure.persistence.repository.DocumentJp
 import jakarta.persistence.EntityManager
 import org.springframework.stereotype.Component
 import org.springframework.transaction.annotation.Transactional
+import java.sql.Timestamp
+import java.time.LocalDateTime
 
 @Component
 class DocumentChunkRepositoryAdapter(
@@ -32,7 +34,17 @@ class DocumentChunkRepositoryAdapter(
     }
 
     override fun findByDocumentIdOrderByChunkIndex(documentId: Long): List<DocumentChunk> =
-        chunkJpaRepository.findByDocumentIdOrderByChunkIndex(documentId).map { DocumentChunkMapper.toDomain(it) }
+        entityManager.createNativeQuery(
+            """
+            SELECT id, document_id, page_from, page_to, chunk_index, content, token_count, created_at
+            FROM document_chunks
+            WHERE document_id = ?
+            ORDER BY chunk_index
+            """.trimIndent()
+        )
+            .setParameter(1, documentId)
+            .resultList
+            .map { row -> toDomainChunk(row as Array<*>) }
 
     override fun deleteByDocumentId(documentId: Long) {
         chunkJpaRepository.deleteByDocumentId(documentId)
@@ -52,4 +64,24 @@ class DocumentChunkRepositoryAdapter(
             .setParameter(2, chunkId)
             .executeUpdate()
     }
+
+    private fun toDomainChunk(row: Array<*>): DocumentChunk =
+        DocumentChunk(
+            id = (row[0] as Number).toLong(),
+            documentId = (row[1] as Number).toLong(),
+            pageFrom = (row[2] as Number).toInt(),
+            pageTo = (row[3] as Number).toInt(),
+            chunkIndex = (row[4] as Number).toInt(),
+            content = row[5] as String,
+            tokenCount = (row[6] as Number).toInt(),
+            embedding = null,
+            createdAt = toLocalDateTime(row[7]),
+        )
+
+    private fun toLocalDateTime(value: Any?): LocalDateTime =
+        when (value) {
+            is LocalDateTime -> value
+            is Timestamp -> value.toLocalDateTime()
+            else -> LocalDateTime.now()
+        }
 }

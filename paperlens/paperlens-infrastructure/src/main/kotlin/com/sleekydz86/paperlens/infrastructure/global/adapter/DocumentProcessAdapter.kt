@@ -5,6 +5,7 @@ import com.sleekydz86.paperlens.application.port.DocumentJobPort
 import com.sleekydz86.paperlens.application.port.DocumentProcessPort
 import com.sleekydz86.paperlens.application.port.EmbeddingPort
 import com.sleekydz86.paperlens.application.port.FileStoragePort
+import com.sleekydz86.paperlens.application.support.DocumentTagSupport
 import com.sleekydz86.paperlens.domain.document.DocumentChunk
 import com.sleekydz86.paperlens.domain.document.DocumentStatus
 import com.sleekydz86.paperlens.domain.job.DocumentJobType
@@ -49,11 +50,11 @@ class DocumentProcessAdapter(
             val allText = savedChunks.joinToString("\n") { it.content }
             val summaryResult = runTrackedJob(documentId, DocumentJobType.SUMMARY) {
                 if (allText.isBlank()) {
-                    SummaryResult(short = null, long = null, documentType = null)
+                    SummaryResult(short = null, long = null, documentType = null, keywords = emptyList())
                 } else {
                     val summary = aiPort.summarizeText(allText)
                     val docType = aiPort.classifyDocumentType(allText)
-                    SummaryResult(summary.short, summary.long, docType)
+                    SummaryResult(summary.short, summary.long, docType, summary.keywords)
                 }
             }
 
@@ -64,9 +65,11 @@ class DocumentProcessAdapter(
                 }
             }
 
+            val resolvedTags = DocumentTagSupport.resolve(document.tagNames, summaryResult.keywords)
             documentRepository.save(
                 document.withStatus(DocumentStatus.INDEXED)
                     .withSummaries(summaryResult.short, summaryResult.long, summaryResult.documentType)
+                    .withTags(resolvedTags)
             )
         } catch (e: Exception) {
             logger.error("Document processing failed: documentId={}", documentId, e)
@@ -145,5 +148,6 @@ class DocumentProcessAdapter(
         val short: String?,
         val long: String?,
         val documentType: String?,
+        val keywords: List<String>,
     )
 }

@@ -9,6 +9,7 @@ import com.sleekydz86.paperlens.application.port.DocumentJobPort
 import com.sleekydz86.paperlens.application.port.DocumentProcessPort
 import com.sleekydz86.paperlens.application.port.FileStoragePort
 import com.sleekydz86.paperlens.application.port.PdfPort
+import com.sleekydz86.paperlens.application.support.DocumentTagSupport
 import com.sleekydz86.paperlens.domain.document.Document
 import com.sleekydz86.paperlens.domain.document.DocumentStatus
 import com.sleekydz86.paperlens.domain.job.DocumentJobType
@@ -37,6 +38,7 @@ open class DocumentUseCase(
         title: String,
         description: String?,
         userId: Long,
+        tagNames: List<String> = emptyList(),
     ): DocumentResponse {
         val pageCount = pdfPort.getPageCount(fileBytes)
         if (pageCount <= 0) {
@@ -44,6 +46,7 @@ open class DocumentUseCase(
         }
         val fileName = "${UUID.randomUUID()}_$originalFileName"
         val storagePath = fileStorage.save(fileBytes, fileName)
+        val normalizedTags = DocumentTagSupport.normalize(tagNames)
 
         val document = Document(
             id = 0L,
@@ -62,7 +65,7 @@ open class DocumentUseCase(
             createdAt = LocalDateTime.now(),
             updatedAt = LocalDateTime.now(),
             deletedAt = null,
-            tagNames = emptyList(),
+            tagNames = normalizedTags,
         )
         val saved = documentRepository.save(document)
         enqueueProcessingJobs(saved.id)
@@ -89,7 +92,7 @@ open class DocumentUseCase(
     open fun getDocument(id: Long): DocumentDetailResponse {
         val document = documentRepository.findById(id)
             ?: throw NoSuchElementException("臾몄꽌瑜?李얠쓣 ???놁뒿?덈떎: $id")
-        return ensureSummary(document).toDetailResponse()
+        return ensureDocumentMetadata(document).toDetailResponse()
     }
 
     @Transactional
@@ -99,7 +102,7 @@ open class DocumentUseCase(
         val updated = document.copy(
             title = request.title ?: document.title,
             description = request.description ?: document.description,
-            tagNames = request.tags ?: document.tagNames,
+            tagNames = request.tags?.let(DocumentTagSupport::normalize) ?: document.tagNames,
             updatedAt = LocalDateTime.now(),
         )
         return documentRepository.save(updated).toDetailResponse()
@@ -142,20 +145,35 @@ open class DocumentUseCase(
         }
     }
 
-    private fun ensureSummary(document: Document): Document {
+    private fun ensureDocumentMetadata(document: Document): Document {
         val needsSummary = document.summaryShort.isNullOrBlank() || document.summaryLong.isNullOrBlank()
         val needsDocType = document.documentType.isNullOrBlank()
-        if (!needsSummary && !needsDocType) return document
+        val needsTags = document.tagNames.isEmpty()
+        if (!needsSummary && !needsDocType && !needsTags) return document
 
         val chunks = chunkRepository.findByDocumentIdOrderByChunkIndex(document.id)
         val combinedText = chunks.joinToString("\n") { it.content }.trim()
         if (combinedText.isBlank()) return document
 
-        val summary = aiPort.summarizeText(combinedText)
+        val summary = if (needsSummary || needsTags) aiPort.summarizeText(combinedText) else null
         val documentType = if (needsDocType) aiPort.classifyDocumentType(combinedText) else document.documentType
-        return documentRepository.save(
-            document.withSummaries(summary.short, summary.long, documentType)
-        )
+        var updated = document
+
+        if (needsSummary || needsDocType) {
+            updated = updated.withSummaries(
+                short = if (needsSummary) summary?.short else updated.summaryShort,
+                long = if (needsSummary) summary?.long else updated.summaryLong,
+                docType = documentType,
+            )
+        }
+
+        if (needsTags) {
+            updated = updated.withTags(
+                DocumentTagSupport.resolve(document.tagNames, summary?.keywords.orEmpty())
+            )
+        }
+
+        return if (updated == document) document else documentRepository.save(updated)
     }
 
     private fun Document.toResponse() = DocumentResponse(
